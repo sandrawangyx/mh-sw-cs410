@@ -103,4 +103,9 @@ venv.bak/
 # mypy
 .mypy_cache/
 .vscode
-lambda_upload
+skill_env
+skill/lambda/skill
+
+webapp
+lambda_bundle.zip
+node_modules

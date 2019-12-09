@@ -3,14 +3,13 @@
     "publishingInformation": {
       "locales": {
         "en-US": {
-          "summary": "Sample Short Description",
+          "summary": "Smart Movie Recommender",
           "examplePhrases": [
-            "Alexa open hello class world",
-            "hello",
-            "help"
+            "Alexa open smart movies",
+            "Alexa start smart movies"
           ],
           "name": "smart-movies",
-          "description": "Sample Full Description"
+          "description": "This skill can recommend you movies based on what you ask and what you have asked before"
         }
       },
       "isAvailableWorldwide": true,
@@ -21,7 +20,7 @@
     "apis": {
       "custom": {
         "endpoint": {
-          "sourceDir": "lambda/py/lambda_upload",
+          "sourceDir": "lambda/skill",
           "uri": "ask-custom-smart-movies-default"
         }
       }

@@ -16,16 +16,13 @@
                     "samples": []
                 },
                 {
-                    "name": "HelloWorldIntent",
+                    "name": "PopularMoviesIntent",
                     "slots": [],
                     "samples": [
-                        "hello",
-                        "how are you",
-                        "say hi world",
-                        "say hi",
-                        "hi",
-                        "say hello world",
-                        "say hello"
+                        "Show me popular movies",
+                        "popular movies",
+                        "top movies",
+                        "give me popular movies"
                     ]
                 },
                 {
