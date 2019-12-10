@@ -9,10 +9,10 @@
             ],
             "arn": "arn:aws:lambda:us-east-1:520123601609:function:ask-custom-smart-movies-default",
             "awsRegion": "us-east-1",
-            "codeUri": "lambda/skill",
+            "codeUri": "lambda/py/lambda_upload",
             "functionName": "ask-custom-smart-movies-default",
             "handler": "index.handler",
-            "revisionId": "34c32498-3ddd-42c0-83c4-e9cce38bf2bb",
+            "revisionId": "02acdd42-0a85-4972-ba8b-ce5e4f144b53",
             "runtime": "python3.6"
           }
         ],
@@ -21,7 +21,7 @@
         },
         "interactionModel": {
           "en-US": {
-            "eTag": "75a6eafc2ccfacfa0495112feb5bf628"
+            "eTag": "a2265b43bc1678ad47baae85563ff67a"
           }
         }
       },

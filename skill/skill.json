@@ -20,7 +20,7 @@
     "apis": {
       "custom": {
         "endpoint": {
-          "sourceDir": "lambda/skill",
+          "sourceDir": "lambda/py/lambda_upload",
           "uri": "ask-custom-smart-movies-default"
         }
       }

@@ -109,3 +109,4 @@ skill/lambda/skill
 webapp
 lambda_bundle.zip
 node_modules
+lambda_upload
