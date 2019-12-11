@@ -27,19 +27,19 @@ class LaunchRequestHandler(AbstractRequestHandler):
 
     def handle(self, handler_input):
         # type: (HandlerInput) -> Response
-        speak_output = "Welcome to Smart Movies!"
+        speak_output = "Welcome to Smart Movies! What can I do for you?"
 
         return (
             handler_input.response_builder
                 .speak(speak_output)
                 .ask(speak_output)
-                .set_should_end_session(True)
+                .set_should_end_session(False)
                 .response
         )
 
 
 class PopularMoviesIntentHandler(AbstractRequestHandler):
-    """Handler for Hello World Intent."""
+    """Handler for Popular Movies Intent."""
     def can_handle(self, handler_input):
         # type: (HandlerInput) -> bool
         return ask_utils.is_intent_name("PopularMoviesIntent")(handler_input)
