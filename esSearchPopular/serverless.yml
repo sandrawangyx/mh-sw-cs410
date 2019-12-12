@@ -56,7 +56,7 @@ provider:
 
 functions:
   searchPopular:
-    handler: handler.searchPopular
+    handler: handler.search_popular_movies
     name: searchPopularMovies
 
 #    The following are a few example events you can configure

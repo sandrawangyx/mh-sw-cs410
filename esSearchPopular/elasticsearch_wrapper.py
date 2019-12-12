@@ -1,7 +1,7 @@
 from __future__ import print_function
 
 import csv
-
+import config
 from elasticsearch import Elasticsearch, RequestsHttpConnection
 from elasticsearch import helpers
 
@@ -49,4 +49,14 @@ def indexBulkCsv(esClient, indexName, doc_type, filepath, fieldnames, delimiter=
 def search(esClient, indexName, query, sort, size):
     res = esClient.search(index=indexName, body={"query": query, "size": size, "sort":sort})
     return res
-           
+
+def search_movies_by_ids(esClient, indexName, movie_ids):
+    movie_query = {
+        "ids": {
+            "type": config.DOCTYPE_MOVIES,
+            "values": movie_ids
+        }
+
+    }
+    search_movies_result = search(esClient, indexName, movie_query, {}, 100000)["hits"]["hits"]
+    return search_movies_result

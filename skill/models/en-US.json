@@ -26,6 +26,14 @@
                     ]
                 },
                 {
+                    "name": "RecommendMoviesIntent",
+                    "slots": [],
+                    "samples": [
+                        "can you recommend movies to me",
+                        "could you give me some recommendations"
+                    ]
+                },
+                {
                     "name": "AMAZON.NavigateHomeIntent",
                     "samples": []
                 }

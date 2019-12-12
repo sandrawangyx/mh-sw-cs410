@@ -459,7 +459,6 @@ Resources:
     Type: AWS::Elasticsearch::Domain
     
     Properties:
-      ElasticsearchVersion: 7.1
       DomainName:
         Ref: elasticSearchDomainName
       ElasticsearchClusterConfig:
