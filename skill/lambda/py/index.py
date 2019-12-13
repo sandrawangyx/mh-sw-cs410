@@ -20,6 +20,35 @@ from alexa import data
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
+def invokeRecommend(userid):
+    # call sagemaker endpont to get the prediction movies
+    client = boto3.client('lambda')
+    d = {
+        "params": {
+            "querystring": {
+                "dataset_id": "100KDS",
+                "userid": userid
+            }
+        }
+    }
+    response = client.invoke(
+        FunctionName='recomendmovies',
+        Payload=json.dumps(d)
+    )
+    response_payload = json.loads(response['Payload'].read().decode("utf-8"))
+    recommendedMovies = response_payload[0:3]
+    numOfRecommendations = len(recommendedMovies)
+    if numOfRecommendations < 0: 
+        speech = "Sorry we don't have any movies to recommend for you!"
+    else:
+        speech = "Here are a few movies you might like: "
+        for i in range(numOfRecommendations):
+            if i == numOfRecommendations - 1:
+                speech += recommendedMovies[i]["movie_details"]["movie_title"]
+            else:
+                speech += "{}, ".format(recommendedMovies[i]["movie_details"]["movie_title"])
+    # speech = speak_output.format(popular_movies[0].movie_title, popular_movies[1].movie_title,popular_movies[2].movie_title)
+    return speech
 
 class LaunchRequestHandler(AbstractRequestHandler):
     """Handler for Skill Launch."""
@@ -77,7 +106,7 @@ class PopularMoviesIntentHandler(AbstractRequestHandler):
 
 
 class RecommendMoviesIntentHandler(AbstractRequestHandler):
-    """Handler for Popular Movies Intent."""
+    """Handler for Recommend Movies Intent."""
 
     def can_handle(self, handler_input):
         # type: (HandlerInput) -> bool
@@ -86,16 +115,55 @@ class RecommendMoviesIntentHandler(AbstractRequestHandler):
     def handle(self, handler_input):
         # type: (HandlerInput) -> Response
         persistence_attr = handler_input.attributes_manager.persistent_attributes
-        if persistence_attr['userid'] is None:
-            speak_output = "Before we "
+        if 'userid' in persistence_attr:
+            speech = invokeRecommend(persistence_attr['userid'])
+            return (
+                handler_input.response_builder
+                .speak(speech)
+                .set_should_end_session(True)
+                .response
+            )
+        else: 
+            # make recommendation based on users history
+            speak_output = "Before we can make proper recommendations, could you share your account id with us?"
             # speech = speak_output.format(popular_movies[0].movie_title, popular_movies[1].movie_title,popular_movies[2].movie_title)
             return (
                 handler_input.response_builder
                 .speak(speak_output)
-                # .ask("add a reprompt if you want to keep the session open for the user to respond")
+                .ask(speak_output)
                 .response
             )
 
+class AccountIdIntentHandler(AbstractRequestHandler):
+    """Handler for AccountId Intent."""
+
+    def can_handle(self, handler_input):
+        # type: (HandlerInput) -> bool
+        return ask_utils.is_intent_name("AccountIdIntent")(handler_input)
+
+    def handle(self, handler_input):
+        # type: (HandlerInput) -> Response
+        slots = handler_input.request_envelope.request.intent.slots
+        accountId = slots['accountId']
+        if accountId.value:
+            persistence_attr = handler_input.attributes_manager.persistent_attributes
+            persistence_attr["userid"] = accountId.value
+            speech = invokeRecommend(accountId.value)
+            return (
+                handler_input.response_builder
+                .speak(speech)
+                .set_should_end_session(True)
+                .response
+            )
+        else: 
+            speak_output = "Sorry I didn't catch that. Could you share your account id with us?"
+            # speech = speak_output.format(popular_movies[0].movie_title, popular_movies[1].movie_title,popular_movies[2].movie_title)
+            return (
+                handler_input.response_builder
+                .speak(speak_output)
+                .ask(speak_output)
+                .response
+            )
 
 class HelpIntentHandler(AbstractRequestHandler):
     """Handler for Help Intent."""
@@ -269,6 +337,7 @@ sb = StandardSkillBuilder(
 sb.add_request_handler(LaunchRequestHandler())
 sb.add_request_handler(PopularMoviesIntentHandler())
 sb.add_request_handler(RecommendMoviesIntentHandler())
+sb.add_request_handler(AccountIdIntentHandler())
 sb.add_request_handler(HelpIntentHandler())
 sb.add_request_handler(CancelOrStopIntentHandler())
 sb.add_request_handler(SessionEndedRequestHandler())

@@ -34,6 +34,17 @@
                     ]
                 },
                 {
+                    "name": "AccountIdIntent",
+                    "slots": [{
+                        "name": "accountId",
+                        "type": "AMAZON.NUMBER"
+                    }],
+                    "samples": [
+                        "My account is {accountId}",
+                        "{accountId}"
+                    ]
+                },
+                {
                     "name": "AMAZON.NavigateHomeIntent",
                     "samples": []
                 }
