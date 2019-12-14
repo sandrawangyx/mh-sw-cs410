@@ -41,13 +41,28 @@ def invokeRecommend(userid):
     if numOfRecommendations < 0: 
         speech = "Sorry we don't have any movies to recommend for you!"
     else:
-        speech = "Here are a few movies you might like: "
+        speech = "Thank you! Here are a few movies you might like: "
         for i in range(numOfRecommendations):
             if i == numOfRecommendations - 1:
                 speech += recommendedMovies[i]["movie_details"]["movie_title"]
             else:
                 speech += "{}, ".format(recommendedMovies[i]["movie_details"]["movie_title"])
     # speech = speak_output.format(popular_movies[0].movie_title, popular_movies[1].movie_title,popular_movies[2].movie_title)
+    return speech
+
+def rateMovie(userid, movieid, rating):
+    # save userid, movieid and rating in dynamodb
+    dyndb = boto3.client('dynamodb', region_name='us-east-1')
+    dyndb.put_item(
+        TableName='Ratings',
+        Item={
+            'userId' : {'N':str(userid)},
+            'movieId': {'N':str(movieid)},
+            'rating': {'N':str(rating)}
+        }
+    )
+    speech = "Thank you for your rating!"
+
     return speech
 
 class LaunchRequestHandler(AbstractRequestHandler):
@@ -125,7 +140,49 @@ class RecommendMoviesIntentHandler(AbstractRequestHandler):
             )
         else: 
             # make recommendation based on users history
+            persistence_attr["prev_intent"] = "RecommendIntent"
             speak_output = "Before we can make proper recommendations, could you share your account id with us?"
+            # speech = speak_output.format(popular_movies[0].movie_title, popular_movies[1].movie_title,popular_movies[2].movie_title)
+            return (
+                handler_input.response_builder
+                .speak(speak_output)
+                .ask(speak_output)
+                .response
+            )
+
+class RateMovieIntentHandler(AbstractRequestHandler):
+    """Handler for Rate Movies Intent."""
+
+    def can_handle(self, handler_input):
+        # type: (HandlerInput) -> bool
+        return ask_utils.is_intent_name("RateMovieIntent")(handler_input)
+
+    def handle(self, handler_input):
+        # type: (HandlerInput) -> Response
+        persistence_attr = handler_input.attributes_manager.persistent_attributes
+        if 'userid' in persistence_attr:
+            userid = persistence_attr['userid']
+            slots = handler_input.request_envelope.request.intent.slots
+            movieid = slots['movie_name'].resolutions.resolutions_per_authority[0].values[0].value.id
+            rating = slots['rating'].value
+            if movieid and rating:
+                speech = rateMovie(userid, movieid, rating)
+                return (
+                    handler_input.response_builder
+                    .speak(speech)
+                    .response
+                )
+            else:
+                speech = "Sorry, I didn't catch that. Can you repeat?"
+                return (
+                    handler_input.response_builder
+                    .speak(speech)
+                    .ask(speech)
+                    .response
+                )
+        else: 
+            persistence_attr["prev_intent"] = "RateMovieIntent"
+            speak_output = "Before you rate any movies, could you share your account id with us?"
             # speech = speak_output.format(popular_movies[0].movie_title, popular_movies[1].movie_title,popular_movies[2].movie_title)
             return (
                 handler_input.response_builder
@@ -148,11 +205,28 @@ class AccountIdIntentHandler(AbstractRequestHandler):
         if accountId.value:
             persistence_attr = handler_input.attributes_manager.persistent_attributes
             persistence_attr["userid"] = accountId.value
-            speech = invokeRecommend(accountId.value)
+            speech = ""
+            endSession = False
+            reprompt = ""
+            if "prev_intent" in persistence_attr and persistence_attr["prev_intent"] == "RecommendIntent":
+                del persistence_attr["prev_intent"]
+                endSession = True
+                reprompt = ""
+                speech = invokeRecommend(accountId.value)
+            elif "prev_intent" in persistence_attr and persistence_attr["prev_intent"] == "RateMovieIntent":
+                del persistence_attr["prev_intent"]
+                endSession = False
+                speech = "Thank you! You can start rating now!"
+                reprompt = speech
+            else:
+                speech = "Sorry, I didn't catch that. What can I do for you?"
+                endSession = False
+                reprompt = speech
             return (
                 handler_input.response_builder
                 .speak(speech)
-                .set_should_end_session(True)
+                .ask(reprompt)
+                .set_should_end_session(endSession)
                 .response
             )
         else: 
@@ -174,7 +248,7 @@ class HelpIntentHandler(AbstractRequestHandler):
 
     def handle(self, handler_input):
         # type: (HandlerInput) -> Response
-        speak_output = "You can say hello to me! How can I help?"
+        speak_output = "You can say list popular movies or recommend movies! How can I help?"
 
         return (
             handler_input.response_builder
@@ -286,33 +360,6 @@ class LoadPersistenceAttributesRequestInterceptor(AbstractRequestInterceptor):
         # type: (HandlerInput) -> None
         persistence_attr = handler_input.attributes_manager.persistent_attributes
 
-        if len(persistence_attr) == 0:
-            # First time skill user
-            persistence_attr["playback_setting"] = {
-                "loop": False,
-                "shuffle": False
-            }
-
-            persistence_attr["playback_info"] = {
-                "play_order": [l for l in range(0, len(data.AUDIO_DATA))],
-                "index": 0,
-                "offset_in_ms": 0,
-                "playback_index_changed": False,
-                "token": None,
-                "next_stream_enqueued": False,
-                "in_playback_session": False,
-                "has_previous_playback_session": False
-            }
-        else:
-            # Convert decimals to integers, because of AWS SDK DynamoDB issue
-            # https://github.com/boto/boto3/issues/369
-            playback_info = persistence_attr.get("playback_info")
-            playback_info["index"] = int(playback_info.get("index"))
-            playback_info["offset_in_ms"] = int(playback_info.get(
-                "offset_in_ms"))
-            playback_info["play_order"] = [
-                int(l) for l in playback_info.get("play_order")]
-
 
 class ResponseLogger(AbstractResponseInterceptor):
     """Log the alexa responses."""
@@ -337,6 +384,7 @@ sb = StandardSkillBuilder(
 sb.add_request_handler(LaunchRequestHandler())
 sb.add_request_handler(PopularMoviesIntentHandler())
 sb.add_request_handler(RecommendMoviesIntentHandler())
+sb.add_request_handler(RateMovieIntentHandler())
 sb.add_request_handler(AccountIdIntentHandler())
 sb.add_request_handler(HelpIntentHandler())
 sb.add_request_handler(CancelOrStopIntentHandler())
