@@ -1,0 +1,33 @@
+{
+  "deploy_settings": {
+    "default": {
+      "resources": {
+        "lambda": [
+          {
+            "alexaUsage": [
+              "custom/default"
+            ],
+            "arn": "arn:aws:lambda:us-east-1:520123601609:function:ask-custom-smart-movies-default",
+            "awsRegion": "us-east-1",
+            "codeUri": "lambda/py/lambda_upload",
+            "functionName": "ask-custom-smart-movies-default",
+            "handler": "index.handler",
+            "revisionId": "848349f7-dfcf-463e-a324-aa74112c48bd",
+            "runtime": "python3.6"
+          }
+        ],
+        "manifest": {
+          "eTag": "7084cf13c2ec55cd68c8aa1fafa1e754"
+        },
+        "interactionModel": {
+          "en-US": {
+            "eTag": "fa4d69e0ae6bf902cbbb8eac6b976500"
+          }
+        }
+      },
+      "was_cloned": false,
+      "merge": {},
+      "skill_id": "amzn1.ask.skill.10159a26-8487-4006-b592-cc731dc79718"
+    }
+  }
+}

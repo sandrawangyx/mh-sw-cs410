@@ -1,0 +1,678 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+    - Label:
+        default: Elastic search domain, Kibana and dataset
+      Parameters:
+      - elasticSearchDomainName
+      - yourPublicIpCidr
+      - s3BucketData
+    - Label:
+        default: Lambda functions set up
+      Parameters:
+      - s3BucketLambdaCode
+      - s3BucketLambdacodeKey
+      - lambdaElasticSearchIndexFunctionName
+      - lambdaElasticSearchMovieFunctionName
+      - lambdaSimulateUserFunctionName
+      - lambdaMovieRecommendationFunctionName
+      - lambdaGetMovieDataSetsFunctionName      
+      - lambdaEnvSagemakerRecommendEndpointNameHundredK
+    - Label:
+        default: Apigateway set up
+      Parameters:
+      - s3BucketApiGatewaySwagger
+      - apigatewayName
+      - apigatewayStage
+   
+    - Label:
+        default: Cloudfront set up
+      Parameters:
+      - s3BucketNameWebApp
+      - s3BucketNameWebAppKey
+      - s3OriginAccessComments
+
+Transform: AWS::Serverless-2016-10-31
+Parameters:
+  elasticSearchDomainName:
+    Description: Elastic Search Movies Domain
+    Type: String
+    Default: movies
+    AllowedPattern: "[a-z0-9]+"
+  yourPublicIpCidr:
+    Description: The IP address CIDR range that you want to allow access through Kibana
+    Type: String
+    Default: "192.168.12.0/24"
+  s3BucketData:
+    Description: The name of an existing s3 bucket that contains the movie datasets
+    Type: String
+    Default: "cs410-movies"
+  s3BucketNameWebApp:
+    Description: The DNS of name of an existing s3 bucket containing web app, e.g webappbucket-name.s3.amazonaws.com
+    Type: String
+    Default: "cs410-movies-web.s3.amazonaws.com"
+  s3BucketNameWebAppKey:
+    Description: The key of web app within s3 bucket containing web app, e.g /webapp
+    Type: String
+    AllowedPattern: "^/.*"
+    Default: "/webapp"
+  s3OriginAccessComments:
+    Description: The S3 orgin access comments for cloudfront origin id
+    Type: String
+    Default: Recommendation EngineWeb App
+  s3BucketLambdaCode:
+    Description: The name of the s3 bucket that holds the code
+    Type: String
+    AllowedPattern: "[A-Za-z0-9-]+"
+    Default: "cs410-movies"
+  s3BucketLambdacodeKey:
+    Description: The name of the s3 key (zip file) within the bucket that holds the
+      code for elastic search index
+    Type: String
+    AllowedPattern: ".+zip"
+    Default: "bacb5add-a742-415b-b1b4-ee7672a99c6c/RecommendationEngineCodeBuild/lambda_bundle.zip"
+  lambdaElasticSearchIndexFunctionName:
+    Description: Lambda Function name used for indexing elastic search
+    Type: String
+    Default: indexElasticSearch
+  lambdaElasticSearchMovieFunctionName:
+    Description: Lambda Function for searching movies
+    Type: String
+    Default: searchmovies
+  lambdaSimulateUserFunctionName:
+    Description: Lambda Function for simulating users
+    Type: String
+    Default: simulateuser
+  lambdaMovieRecommendationFunctionName:
+    Description: Lambda Function for recommending movies
+    Type: String
+    Default: recomendmovies
+  lambdaGetMovieDataSetsFunctionName:
+    Description: Lambda Function for getting the list of movie datasets
+    Type: String
+    Default: getMoviedataSets
+  lambdaEnvSagemakerRecommendEndpointNameHundredK:
+    Description: The name of an existing Sagemaker recommendation endpoint for the 100k dataset for the lambda to invoke, e.g factorization-machines-2018-06-19-06-24-41-438.
+    Type: String
+    Default: "factorization-machines-2019-11-24-00-52-58-197"
+  s3BucketApiGatewaySwagger:
+    Description: The s3 path for api gateway swagger , e.g s3://mybuket/swagger.yaml
+    Type: String
+    Default: "s3://cs410-movies/bacb5add-a742-415b-b1b4-ee7672a99c6c/RecommendationEngineCodeBuild/swagger.yaml"
+  apigatewayName:
+    Description: The name of the Apigateway  endpoint
+    Type: String
+    Default: "cs410-movies-api"
+  apigatewayStage:
+    Description: The name of the Apigateway stage
+    Type: String
+    Default: "develop"
+
+
+Resources:
+  lambdaElasticSearchIndex:
+    Type: AWS::Lambda::Function
+    DependsOn: LambdaEsIndexRole
+    Properties:
+      Code:
+        S3Bucket:
+          Ref: s3BucketLambdaCode
+        S3Key:
+          Ref: s3BucketLambdacodeKey
+      Description: Invokes elastic search index
+      Environment:
+        Variables:
+          elasticsearch_domain_name:
+            Fn::GetAtt:
+            - ElasticsearchDomain
+            - DomainEndpoint
+      FunctionName: 
+        Ref: lambdaElasticSearchIndexFunctionName
+      Handler: lambda_elasticsearch_handler.index_handler
+      MemorySize: '128'
+      ReservedConcurrentExecutions: 100
+      Role:
+        Fn::GetAtt:
+        - LambdaEsIndexRole
+        - Arn
+      Runtime: python3.6
+      Timeout: 180
+      Tags:
+      - Key: StackName
+        Value:
+          Ref: AWS::StackName
+  lambdaElasticSearchMovieSearch:
+    Type: AWS::Lambda::Function
+    DependsOn: LambdaEsIndexRole
+    Properties:
+      Code:
+        S3Bucket:
+          Ref: s3BucketLambdaCode
+        S3Key:
+          Ref: s3BucketLambdacodeKey
+      Description: Invokes elastic search to search movie titles
+      Environment:
+        Variables:
+          elasticsearch_domain_name:
+            Fn::GetAtt:
+            - ElasticsearchDomain
+            - DomainEndpoint
+      FunctionName:
+        Ref: lambdaElasticSearchMovieFunctionName
+      Handler: lambda_elasticsearch_handler.search_movies_handler
+      MemorySize: '128'
+      ReservedConcurrentExecutions: 100
+      Role:
+        Fn::GetAtt:
+        - LambdaEsIndexRole
+        - Arn
+      Runtime: python3.6
+      Timeout: 10
+     
+      Tags:
+      - Key: StackName
+        Value:
+          Ref: AWS::StackName
+  lambdaSimulateUser:
+    Type: AWS::Lambda::Function
+    DependsOn: LambdaEsIndexRole
+    Properties:
+      Code:
+        S3Bucket:
+          Ref: s3BucketLambdaCode
+        S3Key:
+          Ref: s3BucketLambdacodeKey
+      Description: Returns details of a random user
+      Environment:
+        Variables:
+          elasticsearch_domain_name:
+            Fn::GetAtt:
+            - ElasticsearchDomain
+            - DomainEndpoint
+      FunctionName:
+        Ref: lambdaSimulateUserFunctionName
+      Handler: lambda_elasticsearch_handler.get_random_user_handler
+      MemorySize: '128'
+      ReservedConcurrentExecutions: 100
+      Role:
+        Fn::GetAtt:
+        - LambdaEsIndexRole
+        - Arn
+      Runtime: python3.6
+      Timeout: 120
+     
+      Tags:
+      - Key: StackName
+        Value:
+          Ref: AWS::StackName
+  lambdaGetMovieDataSets:
+    Type: AWS::Lambda::Function
+    DependsOn: LambdaEsIndexRole
+    Properties:
+      Code:
+        S3Bucket:
+          Ref: s3BucketLambdaCode
+        S3Key:
+          Ref: s3BucketLambdacodeKey
+      Description: Returns details of available movie datasets
+      FunctionName:
+        Ref: lambdaGetMovieDataSetsFunctionName
+      Handler: lambda_elasticsearch_handler.get_datasets_handler
+      MemorySize: '128'
+      ReservedConcurrentExecutions: 100
+      Role:
+        Fn::GetAtt:
+        - LambdaEsIndexRole
+        - Arn
+      Runtime: python3.6
+      Timeout: 10
+     
+      Tags:
+      - Key: StackName
+        Value:
+          Ref: AWS::StackName
+  lambdaSageMakerRecommendation:
+    Type: AWS::Lambda::Function
+    DependsOn: LambdaEsIndexRole
+    Properties:
+      Code:
+        S3Bucket:
+          Ref: s3BucketLambdaCode
+        S3Key:
+          Ref: s3BucketLambdacodeKey
+      Description: Invokes sagemaker endpoint to recommend a movie
+      Environment:
+        Variables:
+          elasticsearch_domain_name:
+            Fn::GetAtt:
+            - ElasticsearchDomain
+            - DomainEndpoint
+          sagemaker_endpoint_100KDS:
+            Ref: lambdaEnvSagemakerRecommendEndpointNameHundredK
+           
+      FunctionName: 
+        Ref: lambdaMovieRecommendationFunctionName
+      Handler: lambda_sagemaker_handler.lambda_handler
+      MemorySize: '128'
+      ReservedConcurrentExecutions: 100
+      Role:
+        Fn::GetAtt:
+        - LambdaEsIndexRole
+        - Arn
+      Runtime: python3.6
+      Timeout: 120
+     
+      Tags:
+      - Key: StackName
+        Value:
+          Ref: AWS::StackName
+  LambdaEsIndexRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service:
+            - lambda.amazonaws.com
+          Action:
+          - sts:AssumeRole
+      ManagedPolicyArns:
+      - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+      - PolicyName: S3GetCodeObjectPolicy
+        PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+          - Effect: Allow
+            Action:
+            - s3:GetObject
+            Resource:
+            - Fn::Join:
+              - ''
+              - - 'arn:aws:s3:::'
+                - Fn::Join:
+                  - "/"
+                  - - Ref: s3BucketLambdaCode
+                    - Ref: s3BucketLambdacodeKey
+            - Fn::Join:
+              - ''
+              - - 'arn:aws:s3:::'
+                - Fn::Join:
+                  - "/"
+                  - - Ref: s3BucketData
+                    - "*"
+      - PolicyName: ElasticSearchPolicy
+        PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+          - Effect: Allow
+            Action:
+            - es:ESHttpHead
+            - es:ESHttpPost
+            - es:ESHttpGet
+            - es:ESHttpDelete
+            - es:ESHttpPut
+            Resource:
+            - Fn::Join:
+              - ''
+              - - 'arn:aws:es:'
+                - Ref: AWS::Region
+                - ":"
+                - Ref: AWS::AccountId
+                - ":domain/"
+                - Ref: elasticSearchDomainName
+                - "/*"
+            - Fn::Join:
+              - ''
+              - - 'arn:aws:es:'
+                - Ref: AWS::Region
+                - ":"
+                - Ref: AWS::AccountId
+                - ":domain/"
+                - Ref: elasticSearchDomainName
+      - PolicyName: InvokeSagemakerEndpoint
+        PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+          - Effect: Allow
+            Action:
+            - sagemaker:InvokeEndpoint
+            Resource:
+            - Fn::Join:
+              - ''
+              - - 'arn:aws:sagemaker:'
+                #- Ref: AWS::Region
+                - ":"
+                - Ref: AWS::AccountId
+                - ":endpoint/"
+                - Ref: lambdaEnvSagemakerRecommendEndpointNameHundredK
+                - "*"
+            - Fn::Join:
+              - ''
+              - - 'arn:aws:sagemaker:'
+               # - Ref: AWS::Region
+                - ":"
+                - Ref: AWS::AccountId
+                - ":endpoint/"
+                - Ref: lambdaEnvSagemakerRecommendEndpointNameHundredK
+           
+      RoleName:
+        Fn::Join:
+        - ''
+        - - Ref: AWS::StackName
+          - LambdaExecutionRole_LambdaEsIndexRole
+
+  apiGateway:
+    Type: AWS::Serverless::Api
+
+    Properties:
+      Name: 
+        Ref: apigatewayName
+      StageName:
+        Ref: apigatewayStage
+      DefinitionBody:
+        'Fn::Transform':
+          Name: 'AWS::Include'
+          Parameters:
+            Location: 
+              'Fn::Sub': ${s3BucketApiGatewaySwagger}
+  apiGatewayCloudWatchRole: 
+    Type: "AWS::IAM::Role"
+    Properties: 
+      AssumeRolePolicyDocument: 
+        Version: "2012-10-17"
+        Statement: 
+          - Effect: Allow
+            Principal: 
+              Service: 
+                - "apigateway.amazonaws.com"
+            Action: "sts:AssumeRole"
+      Path: "/"
+      ManagedPolicyArns: 
+      - "arn:aws:iam::aws:policy/service-role/AmazonAPIGatewayPushToCloudWatchLogs"
+  apiGatewayAccount: 
+    Type: "AWS::ApiGateway::Account"
+    DependsOn: apiGatewayCloudWatchRole
+    Properties: 
+      CloudWatchRoleArn: 
+        "Fn::GetAtt": 
+          - apiGatewayCloudWatchRole
+          - Arn    
+  apigatewayLambdaPermissionSimulateUser:
+    Type: 'AWS::Lambda::Permission'
+    DependsOn: 
+      - lambdaSimulateUser
+      - apiGateway
+    Properties:
+      FunctionName: 
+        'Fn::GetAtt': 
+          - lambdaSimulateUser
+          - Arn
+      Action: 'lambda:InvokeFunction'
+      Principal: apigateway.amazonaws.com
+      SourceArn: 
+        'Fn::Join':
+          - ""
+          - - 'Fn::Sub': "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:"
+            - Ref: apiGateway
+            - /*
+  apigatewayLambdaPermissionGetMovieDataSets:
+    Type: 'AWS::Lambda::Permission'
+    DependsOn: 
+      - lambdaGetMovieDataSets
+      - apiGateway
+    Properties:
+      FunctionName: 
+        'Fn::GetAtt': 
+          - lambdaGetMovieDataSets
+          - Arn
+      Action: 'lambda:InvokeFunction'
+      Principal: apigateway.amazonaws.com
+      SourceArn: 
+        'Fn::Join':
+          - ""
+          - - 'Fn::Sub': "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:"
+            - Ref: apiGateway
+            - /*
+  apigatewayLambdaPermissionSageMakerRecommendationn:
+    Type: 'AWS::Lambda::Permission'
+    DependsOn: 
+      - lambdaSageMakerRecommendation
+      - apiGateway
+    Properties:
+      FunctionName: 
+        'Fn::GetAtt': 
+          - lambdaSageMakerRecommendation
+          - Arn
+      Action: 'lambda:InvokeFunction'
+      Principal: apigateway.amazonaws.com
+      SourceArn: 
+        'Fn::Join':
+          - ""
+          - - 'Fn::Sub': "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:"
+            - Ref: apiGateway
+            - /*
+  ElasticsearchDomain:
+    Type: AWS::Elasticsearch::Domain
+    
+    Properties:
+      DomainName:
+        Ref: elasticSearchDomainName
+      ElasticsearchClusterConfig:
+        DedicatedMasterEnabled: 'true'
+        InstanceCount: '2'
+        ZoneAwarenessEnabled: 'true'
+        InstanceType: m4.large.elasticsearch
+        DedicatedMasterType: m4.large.elasticsearch
+        DedicatedMasterCount: '3'
+      EBSOptions:
+        EBSEnabled: true
+        Iops: 0
+        VolumeSize: 20
+        VolumeType: gp2
+      SnapshotOptions:
+        AutomatedSnapshotStartHour: '0'
+      AdvancedOptions:
+        rest.action.multi.allow_explicit_index: 'true'
+      AccessPolicies:
+        Version: '2012-10-17'
+        Statement:
+        - Resource:
+            Fn::Join:
+            - ''
+            - - 'arn:aws:es::'
+              - Ref: AWS::AccountId
+              - ":domain/"
+              - Ref: elasticSearchDomainName
+              - "/*"
+          Principal:
+            AWS:
+              Fn::Join:
+              - ''
+              - - 'arn:aws:iam::'
+                - Ref: AWS::AccountId
+                - ":"
+                - root
+          Action:
+          - es:ESHttp*
+          Effect: Allow
+        - Effect: Allow
+          Principal:
+            AWS: "*"
+          Action: es:ESHttp*
+          Condition:
+            IpAddress:
+              aws:SourceIp:
+              - Ref: yourPublicIpCidr
+          Resource:
+            Fn::Join:
+            - ''
+            - - 'arn:aws:es:'
+              - Ref: AWS::Region
+              - ":"
+              - Ref: AWS::AccountId
+              - ":domain/"
+              - Ref: elasticSearchDomainName
+              - "/*"
+      Tags:
+      - Key: StackName
+        Value: 
+          Ref: AWS::StackName
+  Cloudfront:
+    Type: AWS::CloudFront::Distribution
+    DependsOn:
+    - cloudfrontOriginAccess
+    - cloudfrontOriginAccessBucketPolicy
+    
+    Properties:
+      DistributionConfig:
+        Aliases: []
+        CacheBehaviors: 
+          - AllowedMethods: ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]  
+            ForwardedValues:            
+              QueryString: true
+            PathPattern: /api/*   
+            DefaultTTL: 0
+            MaxTTL: 0
+            MinTTL: 0
+            TargetOriginId: api  
+             
+            ViewerProtocolPolicy: allow-all
+
+        DefaultCacheBehavior:
+          AllowedMethods:
+          - HEAD     
+          - GET
+          ForwardedValues:
+            QueryString: 'true'
+          TargetOriginId: webappcontent
+          ViewerProtocolPolicy: allow-all
+        DefaultRootObject: index.html
+        Enabled: 'True'
+        Origins:
+        - DomainName:
+            Ref: s3BucketNameWebApp
+          Id: webappcontent
+          OriginPath:
+            Ref: s3BucketNameWebAppKey
+          S3OriginConfig:
+            OriginAccessIdentity:
+              Fn::Join:
+              - ''
+              - - origin-access-identity/cloudfront/
+                - Ref: cloudfrontOriginAccess
+        - DomainName:
+            "Fn::Join":
+              - ""
+              - - Ref: apiGateway
+                - ".execute-api."
+                - Ref: AWS::Region
+                - ".amazonaws.com"
+          Id: api
+          OriginPath:
+            "Fn::Sub": /${apigatewayStage}
+          CustomOriginConfig:
+            OriginProtocolPolicy: https-only
+
+      Tags:
+      - Key: StackName
+        Value: 
+          Ref: AWS::StackName
+  cloudfrontOriginAccess:
+    Type: AWS::CloudFront::CloudFrontOriginAccessIdentity
+    Properties:
+      CloudFrontOriginAccessIdentityConfig:
+        Comment:
+          Ref: s3OriginAccessComments
+  cloudfrontOriginAccessBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    DependsOn: cloudfrontOriginAccess
+    Properties:
+      Bucket:
+        Fn::Select:
+        - 0
+        - Fn::Split:
+          - "."
+          - Ref: s3BucketNameWebApp
+      PolicyDocument:
+        Statement:
+        - Effect: Allow
+          Principal:
+            CanonicalUser:
+              Fn::GetAtt:
+              - cloudfrontOriginAccess
+              - S3CanonicalUserId
+          Action:
+          - s3:GetObject
+          Resource:
+            Fn::Join:
+            - ''
+            - - 'arn:aws:s3:::'
+              - Fn::Select:
+                - 0
+                - Fn::Split:
+                  - "."
+                  - Ref: s3BucketNameWebApp
+              - Ref: s3BucketNameWebAppKey
+              - "/*"
+Outputs:
+  cloudFrontEndpoint:
+    Description: The domain name of cloudfront
+    Value:
+      Fn::GetAtt:
+      - Cloudfront
+      - DomainName
+    Export:
+      Name:
+        Fn::Join:
+        - ":"
+        - - Ref: AWS::StackName
+          - cloudFrontEndpoint
+  elasticSearchDomainName:
+    Description: The domain name for elastic search
+    Value:
+      Fn::GetAtt:
+      - ElasticsearchDomain
+      - DomainEndpoint
+    Export:
+      Name:
+        Fn::Join:
+        - ":"
+        - - Ref: AWS::StackName
+          - elasticSearchDomainName
+  elasticSearchKibanaEndPoint:
+    Description: Kibana endpoint
+    Value:
+      Fn::Join:
+        - ""
+        - - Fn::GetAtt:
+              - ElasticsearchDomain
+              - DomainEndpoint
+          - "/_plugin/kibana/"
+      
+    Export:
+      Name:
+        Fn::Join:
+        - ":"
+        - - Ref: AWS::StackName
+          - elasticSearchKibanaEndPoint
+  apiGatewayEndPoint:
+    Description: The name of the api gateway end poiny
+    Value:
+      "Fn::Join":
+        - ""
+        - - Ref: apiGateway
+          - ".execute-api."
+          - Ref: AWS::Region
+          - ".amazonaws.com"
+          - "/"
+          - Ref: apigatewayStage
+    Export:
+      Name:
+        Fn::Join:
+        - ":"
+        - - Ref: AWS::StackName
+          - apiGatewayEndPoint

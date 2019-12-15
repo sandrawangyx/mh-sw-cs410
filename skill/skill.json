@@ -1,0 +1,30 @@
+{
+  "manifest": {
+    "publishingInformation": {
+      "locales": {
+        "en-US": {
+          "summary": "Smart Movie Recommender",
+          "examplePhrases": [
+            "Alexa open smart movies",
+            "Alexa start smart movies"
+          ],
+          "name": "smart movies",
+          "description": "This skill can recommend you movies based on what you ask and what you have asked before"
+        }
+      },
+      "isAvailableWorldwide": true,
+      "testingInstructions": "Sample Testing Instructions.",
+      "category": "KNOWLEDGE_AND_TRIVIA",
+      "distributionCountries": []
+    },
+    "apis": {
+      "custom": {
+        "endpoint": {
+          "sourceDir": "lambda/py/lambda_upload",
+          "uri": "ask-custom-smart-movies-default"
+        }
+      }
+    },
+    "manifestVersion": "1.0"
+  }
+}
