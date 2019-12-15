@@ -12,16 +12,16 @@
             "codeUri": "lambda/py/lambda_upload",
             "functionName": "ask-custom-smart-movies-default",
             "handler": "index.handler",
-            "revisionId": "04498eaf-915e-4485-8f61-5a3a289faac5",
+            "revisionId": "848349f7-dfcf-463e-a324-aa74112c48bd",
             "runtime": "python3.6"
           }
         ],
         "manifest": {
-          "eTag": "6d1881899336493f386f55f53c347450"
+          "eTag": "7084cf13c2ec55cd68c8aa1fafa1e754"
         },
         "interactionModel": {
           "en-US": {
-            "eTag": "789488f5c22ca608e5bf59b9df0c6935"
+            "eTag": "fa4d69e0ae6bf902cbbb8eac6b976500"
           }
         }
       },

@@ -8,7 +8,7 @@
             "Alexa open smart movies",
             "Alexa start smart movies"
           ],
-          "name": "smart-movies",
+          "name": "smart movies",
           "description": "This skill can recommend you movies based on what you ask and what you have asked before"
         }
       },

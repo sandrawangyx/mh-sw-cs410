@@ -41,7 +41,7 @@ def invokeRecommend(userid):
     if numOfRecommendations < 0: 
         speech = "Sorry we don't have any movies to recommend for you!"
     else:
-        speech = "Thank you! Here are a few movies you might like: "
+        speech = "Here are a few movies you might like: "
         for i in range(numOfRecommendations):
             if i == numOfRecommendations - 1:
                 speech += recommendedMovies[i]["movie_details"]["movie_title"]
