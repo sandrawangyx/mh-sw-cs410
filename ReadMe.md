@@ -127,5 +127,29 @@ Besides all lambdas mentioned in previous steps, there are three more essential 
 
 - Alexa Skill handler lambda: This lambda will be auto generated when deploying the skill. For more details, please refer to folder `skill`.
 
+## Demo
 
+### User rates a movie
+```
+User: Alexa, open smart movie
+Alexa: Welcome to smart movie! What can I do for you?
+User: I want to give Toy Story five star
+Alexa: Thank you for your rating!
+```
+
+### User asks to know popular movies
+```
+User: Alexa, open smart movie
+Alexa: Welcome to smart movie! What can I do for you?
+User: Show me popular movies
+Alexa: Here are a few movies you might like: Star Wars (1977), Contact (1997), Fargo (1996)
+```
+
+### User asks to recommend movies
+```
+User: Alexa, open smart movie
+Alexa: Welcome to smart movie! What can I do for you?
+User: Can you recommend some movies to me?
+Alexa: Here are a few movies you might like: Get Shorty (1995), Toy Story (1995), Babe (1995)
+```
 
